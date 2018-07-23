@@ -7,11 +7,6 @@ PYTHON_VERSION_TAG=3.6.6 # Switch to 3.7 once Tensorflow is out for it
 SOURCE_DIR="Python-${PYTHON_VERSION_TAG}"
 INSTALL_DIR="${HOME}/${SOURCE_DIR}"
 
-CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
-
-GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
-export PATH="${GCC_PATH}/bin:${PATH}"
-
 function check_host_location {
     # Check if on LXPLUS
     if echo "$(hostname)" | grep -q "cern.ch"; then
@@ -85,7 +80,21 @@ function symlink_installed_to_defaults {
     ln -s "pip${PYTHON_VERSION_TAG:0:3}" pip
 }
 
-check_host_location
+HOST_LOCATION="$(check_host_location)"
+
+if [[ "${HOST_LOCATION}" = "CERN" ]]; then
+    if [[ ! $(grep 'release 7' /etc/*-release) ]]; then
+        echo "### A modern CentOS 7 architecture is expected."
+        echo "    Please use LXPLUS7 instead: ssh ${USER}@lxplus7.cern.ch -CX"
+        exit 1
+    else
+        # USER is on an LXPLUS7 node
+        CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
+
+        GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
+        export PATH="${GCC_PATH}/bin:${PATH}"
+    fi
+fi
 
 NPROC="$(set_num_processors)"
 
