@@ -80,6 +80,16 @@ function symlink_installed_to_defaults {
     ln -s "pip${PYTHON_VERSION_TAG:0:3}" pip
 }
 
+function append_to_bashrc {
+    if ! grep -q "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" ~/.bashrc; then
+        echo "" >> ~/.bashrc
+        echo "# added by HEPML environment installer" >> ~/.bashrc
+        echo "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" >> ~/.bashrc
+        echo "export PATH=\"${HOME}/.local/bin::\$PATH\"" >> ~/.bashrc
+        echo "eval \"\$(pipenv --completion)\"" >> ~/.bashrc
+    fi
+}
+
 HOST_LOCATION="$(check_host_location)"
 
 if [[ "${HOST_LOCATION}" = "CERN" ]]; then
@@ -108,13 +118,23 @@ cd "${INSTALL_DIR}"
 
 build_cpython "${INSTALL_DIR}" "${CXX_VERSION}"
 
-# Add the installed version of Python3 to the USER's PATH
-if ! grep -q "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" ~/.bashrc; then
-    echo "" >> ~/.bashrc
-    echo "# added by HEPML environment installer" >> ~/.bashrc
-    echo "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" >> ~/.bashrc
-fi
-
 # symbolic link the installed version of Python3 to python3
 cd bin
 symlink_installed_to_defaults
+
+# Add the installed version of Python3 to the USER's PATH
+export "PATH=${INSTALL_DIR}/bin:$PATH"
+export "PATH=${HOME}/.local/bin:$PATH"
+
+# Update pip
+printf "\n### pip install --upgrade pip\n"
+pip install --upgrade --quiet pip
+
+# Install pipenv
+printf "\n### pip install --user pipenv\n"
+pip install --user --quiet pipenv
+
+append_to_bashrc
+
+printf "\n### Finished installation!\n"
+printf "    source ~/.bashrc to start using the environment\n"
