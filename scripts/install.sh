@@ -84,9 +84,19 @@ function append_to_bashrc {
     if ! grep -q "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" ~/.bashrc; then
         echo "" >> ~/.bashrc
         echo "# added by HEPML environment installer" >> ~/.bashrc
-        echo "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" >> ~/.bashrc
-        echo "export PATH=\"${HOME}/.local/bin::\$PATH\"" >> ~/.bashrc
-        echo "eval \"\$(pipenv --completion)\"" >> ~/.bashrc
+
+        if [[ "${HOST_LOCATION}" = "CERN" ]]; then
+            echo "# only setup PATH if on CentOS 7" >> ~/.bashrc
+            echo "if [[ \$(grep 'release 7' /etc/*-release) ]]; then" >> ~/.bashrc
+            echo "    export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" >> ~/.bashrc
+            echo "    export PATH=\"${HOME}/.local/bin:\$PATH\"" >> ~/.bashrc
+            echo "    eval \"\$(pipenv --completion)\"" >> ~/.bashrc
+            echo "fi" >> ~/.bashrc
+        else
+            echo "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" >> ~/.bashrc
+            echo "export PATH=\"${HOME}/.local/bin:\$PATH\"" >> ~/.bashrc
+            echo "eval \"\$(pipenv --completion)\"" >> ~/.bashrc
+        fi
     fi
 }
 
