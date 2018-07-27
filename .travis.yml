@@ -6,9 +6,9 @@ python:
 install:
     - pip install --upgrade --quiet pip
     - pip install --quiet pipenv
-    - pipenv install
+    - pipenv install --dev
 script:
-    - pip freeze
+    - pipenv run pytest
 
 stages:
   - test
