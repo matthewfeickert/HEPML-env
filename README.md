@@ -3,6 +3,7 @@
 Installs a minimal Python3 environment for HEP machine learning
 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
+[![Build Status](https://travis-ci.com/matthewfeickert/HEPML-env.svg?branch=master)](https://travis-ci.com/matthewfeickert/HEPML-env)
 
 ## Contributing
 

@@ -1,0 +1,14 @@
+# test matrix
+language: python
+cache: pip
+python:
+  - '3.6'
+install:
+    - pip install --upgrade --quiet pip
+    - pip install --quiet pipenv
+    - pipenv install --dev
+script:
+    - pipenv run pytest
+
+stages:
+  - test
