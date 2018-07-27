@@ -36,6 +36,33 @@ Setting up a machine learning environment has gotten easier recently, but there 
 
 HEPML uses Python 3 and pipenv, but if you don't have them installed already the [`install.sh`](https://github.com/matthewfeickert/HEPML-env/blob/master/scripts/install.sh) will take care of that for you.
 
+## Installation and setup
+
+Clone the repo
+
+```
+git clone git@github.com:matthewfeickert/HEPML-env.git
+```
+
+If the above requirements are not already satisfied, run the installer
+
+```
+bash scripts/install.sh
+```
+
+<details>
+ <summary>Note on cloning on LXPLUS</summary>
+
+When trying to use SSH with GitHub on LXPLUS it is important to make sure that your `~/.ssh/config` is properly configured. It may need to contain something along the lines of
+
+```
+Host github.com
+    IdentityFile ~/.ssh/id_rsa-github
+    IdentitiesOnly yes
+```
+
+</details>
+
 ## Questions
 
 ### Why not use Conda?
