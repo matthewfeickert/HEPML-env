@@ -38,17 +38,7 @@ HEPML uses Python 3 and pipenv, but if you don't have them installed already the
 
 ## Installation and setup
 
-Clone the repo
-
-```
-git clone git@github.com:matthewfeickert/HEPML-env.git
-```
-
-If the above requirements are not already satisfied, run the installer
-
-```
-bash scripts/install.sh
-```
+1. Clone the repo
 
 <details>
  <summary>Note on cloning on LXPLUS</summary>
@@ -62,6 +52,35 @@ Host github.com
 ```
 
 </details>
+
+
+2. If the above requirements are not already satisfied, run the installer
+
+```
+bash scripts/install.sh
+```
+
+3. Make a directory for your project
+
+```
+mkdir ~/projects/HEPML_project
+cd ~/projects/HEPML_project
+```
+
+4. Copy the included `Pipfile` and `Pipfile.lock` to the project directory
+
+5. Install the environment with pipenv
+
+```
+# From inside the project directory
+pipenv install
+```
+
+6. Launch into the project environment with pipenv
+
+```
+pipenv shell
+```
 
 ## Questions
 
