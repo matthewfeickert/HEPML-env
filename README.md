@@ -30,7 +30,7 @@ Setting up a machine learning environment has gotten easier recently, but there 
 
 ## Requirements
 
-- `g++` (6.0 or higher? need to follow up on this)
+- `g++` (5.4 or higher is recommended)
 - Python 3.6 or higher
 - [pipenv](https://docs.pipenv.org/)
 
@@ -101,6 +101,10 @@ ROOT is not a necessary component of a HEP focused machine learning workflow. An
 ### Why is Keras not included?
 
 It is. [Keras is part of TensorFlow](https://www.tensorflow.org/api_docs/python/tf/keras) as of circa January, 2017.
+
+### Will you support Python 2?
+
+[No](https://pythonclock.org/). Python 2's EOL date has been [officially set to 2020-01-01](https://github.com/python/devguide/pull/344). We need to move on as a community; [everyone else already has](https://python3statement.org/).
 
 ## Contributing
 
