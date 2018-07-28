@@ -30,11 +30,29 @@ Setting up a machine learning environment has gotten easier recently, but there 
 
 ## Requirements
 
-- `g++` (5.4 or higher is recommended)
+- GNU
+    - gcc/g++ (5.4 or higher is recommended)
+    - zlibc
+    - zlib1g-dev
+    - libssl-dev
+    - wget
+    - make
+    - Bash
 - Python 3.6 or higher
 - [pipenv](https://docs.pipenv.org/)
 
 HEPML uses Python 3 and pipenv, but if you don't have them installed already the [`install.sh`](https://github.com/matthewfeickert/HEPML-env/blob/master/scripts/install.sh) will take care of that for you.
+
+<details>
+ <summary>Installing GNU requirements on Debian/Ubuntu</summary>
+
+On Debian/Ubuntu the GNU requirements can be met by
+
+```
+apt install gcc g++ git zlibc zlib1g-dev libssl-dev wget make
+```
+
+</details>
 
 ## Installation and setup
 
