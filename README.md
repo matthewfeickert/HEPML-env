@@ -11,16 +11,16 @@ Setting up a machine learning environment has gotten easier recently, but there 
 
 ### The default environment
 
-- numpy
-- scipy
-- matplotlib
-- pandas
-- h5py
-- scikit-learn
-- scikit-image
-- uproot
-- tensorflow
-- jupyter
+- [numpy](https://github.com/numpy/numpy)
+- [scipy](https://github.com/scipy/scipy)
+- [matplotlib](https://github.com/matplotlib/matplotlib)
+- [pandas](https://github.com/pandas-dev/pandas)
+- [h5py](https://github.com/h5py/h5py)
+- [uproot](https://github.com/scikit-hep/uproot)
+- [scikit-learn](https://github.com/scikit-learn/scikit-learn)
+- [scikit-image](https://github.com/scikit-image/scikit-image)
+- [tensorflow](https://github.com/tensorflow/tensorflow)
+- [jupyter](https://github.com/jupyter)
 
 
 ### Core features
@@ -83,6 +83,10 @@ pipenv shell
 ```
 
 ## Questions
+
+### Why were the packages chosen for the default environment?
+
+NumPy, SciPy, Matplotlib, and Pandas represent the core of the powerful [SciPy stack](https://www.scipy.org/) (IPython is taken care of by Jupyter). h5py and uproot allow for working with [industry standard data formats](https://support.hdfgroup.org/HDF5/). scikit-learn, scikit-image, and tensorflow provide a very strong machine learning ecosystem and Keras support. Jupyter provides the Jupyter notebook, qtconsole, and the IPython kernel, which ties it all together for interactive computing and data exploration.
 
 ### Why not use Conda?
 
