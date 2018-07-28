@@ -90,7 +90,9 @@ NumPy, SciPy, Matplotlib, and Pandas represent the core of the powerful [SciPy s
 
 ### Why not use Conda?
 
-This can also be done with Conda. However, sometimes Conda lags behind in releases and there are some benefits from using packages straight from PyPI as the developer's CD release them.
+This can also be done with Conda. However, sometimes Conda lags behind in releases and there are some benefits from using packages straight from PyPI as the developer's CD release them. In addition, Conda requires additional space and software that is not core to the environment that we need. This is not necessarily a problem, but having a lightweight, portable, reproducible environment that can be fully installed in under 5 minutes is the goal here, and I think that pipenv is better suited for that.
+
+However, it is recognized that Conda is incredibly popular, and even the recommended installation method for some packages. In the future a Conda `environment.yml` file that closely follows the `Pipfile` for the default environment will be released on [Anaconda cloud](https://anaconda.org/).
 
 ### Why is ROOT not included?
 
