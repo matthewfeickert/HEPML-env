@@ -217,9 +217,9 @@ else
     export "PATH=${HOME}/.local/bin:$PATH"
 fi
 
-# Update pip
-printf "\n### pip install --upgrade pip\n"
-pip3 install --upgrade --quiet pip
+# Update pip, setuptools, and wheel
+printf "\n### pip install --upgrade pip setuptools wheel\n"
+pip3 install --upgrade --quiet pip setuptools wheel
 
 # Install pipenv
 printf "\n### pip install pipenv\n"
