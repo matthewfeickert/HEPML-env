@@ -5,7 +5,6 @@ Provides a minimal Python3 environment for machine learning focused towards HEP 
 [![License](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](https://opensource.org/licenses/BSD-3-Clause)
 [![Build Status](https://travis-ci.com/matthewfeickert/HEPML-env.svg?branch=master)](https://travis-ci.com/matthewfeickert/HEPML-env)
 
----
 
 Setting up a machine learning environment has gotten easier recently, but there are at times still problems that arise from time to time. HEPML-env allows for easily setting up a standard machine learning Python environment that should allow you to get to work with HEP data immediately. It should be machine agnostic, such that it can setup an identical environment on your laptop or on LXPLUS.
 
@@ -28,6 +27,24 @@ Setting up a machine learning environment has gotten easier recently, but there 
 - Reproducibility
 - Portability
 - ROOT-less
+
+## Table of Contents
+<!-- TOC depthFrom:1 depthTo:6 withLinks:1 updateOnSave:0 orderedList:0 -->
+
+- [Requirements](#requirements)
+- [Installation and setup](#installation-and-setup)
+- [Questions](#questions)
+	- [Why were the packages chosen for the default environment?](#why-were-the-packages-chosen-for-the-default-environment)
+	- [Why not use Conda?](#why-not-use-conda)
+	- [What if I just want to use pip?](#what-if-i-just-want-to-use-pip)
+	- [Why is ROOT not included?](#why-is-root-not-included)
+	- [Why is Keras included? It is part of TensorFlow now.](#why-is-keras-included-it-is-part-of-tensorflow-now)
+	- [Will you support Python 2?](#will-you-support-python-2)
+- [Contributing](#contributing)
+- [Authors](#authors)
+- [Acknowledgments](#acknowledgments)
+
+<!-- /TOC -->
 
 ## Requirements
 
