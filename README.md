@@ -112,6 +112,16 @@ This can also be done with Conda. However, sometimes Conda lags behind in releas
 
 However, it is recognized that Conda is incredibly popular, and even the recommended installation method for some packages. In the future a Conda `environment.yml` file that closely follows the `Pipfile` for the default environment will be released on [Anaconda cloud](https://anaconda.org/).
 
+### What if I just want to use pip?
+
+If you want to be in charge of your own environment management then you can use [pipenv to generate a `requirements.txt` file](https://docs.pipenv.org/advanced/#generating-a-requirements-txt) for you from the `Pipfile.lock`
+
+```
+pipenv lock --requirements > requirements.txt
+```
+
+Note that this generates a `requirements.txt` that matches the lock so `==` is used. You might want to do a search and replace with `>=` if you're going to be installing in your home environment.
+
 ### Why is ROOT not included?
 
 ROOT is not a necessary component of a HEP focused machine learning workflow. Any I/O involving `.root` files is handled by [uproot](https://github.com/scikit-hep/uproot), allowing you to focus on the work and not the file format.
