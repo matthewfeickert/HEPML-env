@@ -20,6 +20,7 @@ Setting up a machine learning environment has gotten easier recently, but there 
 - [scikit-learn](https://github.com/scikit-learn/scikit-learn)
 - [scikit-image](https://github.com/scikit-image/scikit-image)
 - [tensorflow](https://github.com/tensorflow/tensorflow)
+- [keras](https://github.com/keras-team/keras)
 - [jupyter](https://github.com/jupyter)
 
 
@@ -104,7 +105,7 @@ pipenv shell
 
 ### Why were the packages chosen for the default environment?
 
-NumPy, SciPy, Matplotlib, and Pandas represent the core of the powerful [SciPy stack](https://www.scipy.org/) (IPython is taken care of by Jupyter). h5py and uproot allow for working with [industry standard data formats](https://support.hdfgroup.org/HDF5/). scikit-learn, scikit-image, and tensorflow provide a very strong machine learning ecosystem and Keras support. Jupyter provides the Jupyter notebook, qtconsole, and the IPython kernel, which ties it all together for interactive computing and data exploration.
+NumPy, SciPy, Matplotlib, and Pandas represent the core of the powerful [SciPy stack](https://www.scipy.org/) (IPython is taken care of by Jupyter). h5py and uproot allow for working with [industry standard data formats](https://support.hdfgroup.org/HDF5/). scikit-learn, scikit-image, and tensorflow provide a very strong machine learning ecosystem. Keras allows for easily building NNs and training with different backends. Jupyter provides the Jupyter notebook, qtconsole, and the IPython kernel, which ties it all together for interactive computing and data exploration.
 
 ### Why not use Conda?
 
@@ -126,9 +127,11 @@ Note that this generates a `requirements.txt` that matches the lock so `==` is u
 
 ROOT is not a necessary component of a HEP focused machine learning workflow. Any I/O involving `.root` files is handled by [uproot](https://github.com/scikit-hep/uproot), allowing you to focus on the work and not the file format.
 
-### Why is Keras not included?
+### Why is Keras included? It is part of TensorFlow now.
 
-It is. [Keras is part of TensorFlow](https://www.tensorflow.org/api_docs/python/tf/keras) as of circa January, 2017.
+> [`tf.keras` is TensorFlow's implementation of the Keras API specification](https://www.tensorflow.org/guide/keras#import_tfkeras).
+
+So while [Keras has been included as part of TensorFlow](https://www.tensorflow.org/api_docs/python/tf/keras) since circa January, 2017, the Keras library is a different standalone library then its TensorFlow module counterpart.
 
 ### Will you support Python 2?
 
