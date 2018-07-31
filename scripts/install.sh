@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+# Much inspiration was taken from the Rust installer: https://sh.rustup.rs
+
 set -eu
 
 # PYTHON_VERSION_TAG=3.7.0
@@ -23,9 +25,11 @@ function set_base_directory {
             printf "    In addition to Python3 the installed packages for the ML environment\n"
             printf "    take up multiple gigabytes of storage. It is suggested that the installation\n"
             printf "    directory be set to someplace with a large amount of storage rather than the\n"
-            printf "    USER home area, such as the AFS work partition: /afs/cern.ch/work/${USER:0:1}/${USER}\n\n"
+            printf "    USER home area, such as the AFS work partition: ${HOME/user/work}\n\n"
+            printf "\n### Python3 will be installed by default in the AFS work partition: ${HOME/user/work}\n\n"
+        else
+            printf "\n### Python3 will be installed by default in \${HOME}: ${HOME}\n\n"
         fi
-        printf "\n### Python3 will be installed by default in \${HOME}: ${HOME}\n\n"
         read -p "    Would you like Python3 to be installed in a DIFFERENT directory? [Y/n] " yn
         case $yn in
             [Yy]* )
