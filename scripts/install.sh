@@ -7,6 +7,34 @@ set -eu
 # PYTHON_VERSION_TAG=3.7.0
 PYTHON_VERSION_TAG=3.6.6 # Switch to 3.7 once Tensorflow is out for it
 
+function print_help_menu {
+    cat 1>&2 <<EOF
+Installer for HEPML-env:
+https://github.com/matthewfeickert/HEPML-env
+
+Setting up a machine learning environment has gotten easier recently,
+but there are at times still problems that arise from time to time.
+HEPML-env allows for easily setting up a standard machine learning Python
+environment that should allow you to get to work with HEP data immediately.
+It should be machine agnostic, such that it can setup an identical environment
+on your laptop or on LXPLUS.
+
+USAGE:
+    installer [FLAGS]
+
+FLAGS:
+    -h, --help              Print help information
+    -y, --yes-to-all        Accept defaults and disable confirmation prompt
+    -q, --quiet             Print minimal information
+EOF
+}
+
+function notify() {
+    if [[ "${IS_QUIET}" != true ]]; then
+        printf "${1}"
+    fi
+}
+
 function check_host_location {
     # Check if on LXPLUS
     if echo "$(hostname)" | grep -q "cern.ch"; then
@@ -19,66 +47,78 @@ function check_host_location {
 function set_base_directory {
     # Select the home directory as the default base directory
     BASE_DIR="${HOME}"
+    if [[ "${HOST_LOCATION}" = "CERN" ]]; then
+        BASE_DIR="${HOME/user/work}"
+    fi
+
     while true; do
-        if [[ "${HOST_LOCATION}" = "CERN" ]]; then
-            printf "\n### N.B.:\n"
-            printf "    In addition to Python3 the installed packages for the ML environment\n"
-            printf "    take up multiple gigabytes of storage. It is suggested that the installation\n"
-            printf "    directory be set to someplace with a large amount of storage rather than the\n"
-            printf "    USER home area, such as the AFS work partition: ${HOME/user/work}\n\n"
-            printf "\n### Python3 will be installed by default in the AFS work partition: ${HOME/user/work}\n\n"
-        else
-            printf "\n### Python3 will be installed by default in \${HOME}: ${HOME}\n\n"
+        if [[ "${IS_QUIET}" != true ]]; then
+            if [[ "${HOST_LOCATION}" = "CERN" ]]; then
+                printf "\n### N.B.:\n"
+                printf "    In addition to Python3 the installed packages for the ML environment\n"
+                printf "    take up multiple gigabytes of storage. It is suggested that the installation\n"
+                printf "    directory be set to someplace with a large amount of storage rather than the\n"
+                printf "    USER home area, such as the AFS work partition: ${HOME/user/work}\n\n"
+                printf "\n### Python3 will be installed by default in the AFS work partition: ${BASE_DIR}\n\n"
+            else
+                printf "\n### Python3 will be installed by default in \${HOME}: ${HOME}\n\n"
+            fi
         fi
-        read -p "    Would you like Python3 to be installed in a DIFFERENT directory? [Y/n] " yn
-        case $yn in
-            [Yy]* )
-                # Check if path is empty string
-                echo ""
-                read -r -e -p "    Enter the full file path of the directory: " BASE_DIR
-                if [[ -z "${BASE_DIR}" ]]; then
-                    printf "\n    ERROR: The path entered is an empty string.\n\n"
-                    exit
-                fi
-                # Check if path does not exist
-                if [[ ! -e "${BASE_DIR}" ]]; then
-                    printf "\n    ERROR: The path does not exist.\n\n"
-                    exit
-                fi
-                # The "/" will be added later
-                if [[ "${BASE_DIR: -1}" = "/" ]]; then
-                    BASE_DIR="${BASE_DIR:0:${#BASE_DIR} - 1}"
-                fi
-                # Confirm
-                HAVE_ALREADY_CONFIRMED=false
-                if [[ "${HAVE_ALREADY_CONFIRMED}" ]]; then
-                    while true; do
-                        printf "\n### Python3, pipenv, and all Python libraries will be installed under: ${BASE_DIR}\n\n"
-                        printf "    Current use of storage on partion housing ${BASE_DIR}\n\n"
-                        cd "${BASE_DIR}"
-                        fs lq -human
-                        cd - &> /dev/null
-                        echo ""
-                        read -p "    Is this all okay? [Y/n] " yn
-                        case $yn in
-                            [Yy]* )
-                                # Being installation
-                                echo ""; break ;;
-                            [Nn]* )
-                                HAVE_ALREADY_CONFIRMED=true
-                                clear
-                                set_base_directory ;;
-                            * )
-                                clear
-                                printf "\n    Please answer Yes or No.\n" ;;
-                        esac
-                    done
-                fi; break ;;
-            [Nn]* ) break ;;
-            * )
-                clear
-                printf "\n    Please answer Yes or No.\n" ;;
-        esac
+
+        if [[ "${DID_ACCEPT_DEFAULTS}" != true ]]; then
+            read -p "    Would you like Python3 to be installed in a DIFFERENT directory? [Y/n] " yn
+            case $yn in
+                [Yy]* )
+                    # Check if path is empty string
+                    echo ""
+                    read -r -e -p "    Enter the full file path of the directory: " BASE_DIR
+                    if [[ -z "${BASE_DIR}" ]]; then
+                        printf "\n    ERROR: The path entered is an empty string.\n\n"
+                        exit
+                    fi
+                    # Check if path does not exist
+                    if [[ ! -e "${BASE_DIR}" ]]; then
+                        printf "\n    ERROR: The path does not exist.\n\n"
+                        exit
+                    fi
+                    # The "/" will be added later
+                    if [[ "${BASE_DIR: -1}" = "/" ]]; then
+                        BASE_DIR="${BASE_DIR:0:${#BASE_DIR} - 1}"
+                    fi
+                    # Confirm
+                    HAVE_ALREADY_CONFIRMED=false
+                    if [[ "${HAVE_ALREADY_CONFIRMED}" ]]; then
+                        while true; do
+                            printf "\n### Python3, pipenv, and all Python libraries will be installed under: ${BASE_DIR}\n\n"
+                            printf "    Current use of storage on partion housing ${BASE_DIR}\n\n"
+                            cd "${BASE_DIR}"
+                            fs lq -human
+                            cd - &> /dev/null
+                            echo ""
+                            read -p "    Is this all okay? [Y/n] " yn
+                            case $yn in
+                                [Yy]* )
+                                    # Being installation
+                                    echo ""; break ;;
+                                [Nn]* )
+                                    HAVE_ALREADY_CONFIRMED=true
+                                    clear
+                                    set_base_directory ;;
+                                * )
+                                    clear
+                                    printf "\n    Please answer Yes or No.\n" ;;
+                            esac
+                        done
+                    fi; break ;;
+                [Nn]* ) break ;;
+                * )
+                    clear
+                    printf "\n    Please answer Yes or No.\n" ;;
+            esac
+        else
+            # Did accept defaults
+            break
+        fi
     done
 }
 
@@ -90,7 +130,7 @@ function set_base_directory {
 
 function download_cpython () {
     # 1: the version tag
-    printf "\n### Downloading CPython source as Python-${1}.tgz\n"
+    notify "\n### Downloading CPython source as Python-${1}.tgz\n"
     cd ${BASE_DIR}
     if [[ ! -f "Python-${1}.tgz" ]]; then
         wget "https://www.python.org/ftp/python/${1}/Python-${1}.tgz" &> /dev/null
@@ -117,7 +157,7 @@ function build_cpython () {
     # 2: the path to the version of gcc to be used
 
     # https://docs.python.org/3/using/unix.html#building-python
-    printf "\n### ./configure\n"
+    notify "\n### ./configure\n"
     # Need to solve issue with unbound variable catch
     # if [[ -z "${1}" ]]; then
     #     ./configure --enable-optimizations
@@ -131,105 +171,158 @@ function build_cpython () {
     ./configure --prefix="${1}" \
         --with-cxx-main="${2}" \
         CXX="${2}" &> cpython_configure.log
-    printf "\n### make -j${NPROC}\n"
+    notify "\n### make -j${NPROC}\n"
     make -j${NPROC} &> cpython_build.log
-    printf "\n### make altinstall\n"
+    notify "\n### make altinstall\n"
     make altinstall &> cpython_install.log
 }
 
 function symlink_installed_to_defaults {
     # symbolic link the installed versions of Python3 to python3
-    printf "\n### ln -s python${PYTHON_VERSION_TAG:0:3} python3\n"
+    notify "\n### ln -s python${PYTHON_VERSION_TAG:0:3} python3\n"
     ln -s "python${PYTHON_VERSION_TAG:0:3}" python3
     # pipenv will overwrite any symlink to pip3, but that's okay
     ln -s "pip${PYTHON_VERSION_TAG:0:3}" pip3
 }
 
 function append_to_bashrc {
-    if ! grep -q "export PATH=\"${INSTALL_DIR}/bin:\$PATH\"" ~/.bashrc; then
-        echo "" >> ~/.bashrc
-        echo "# added by HEPML environment installer" >> ~/.bashrc
+    if ! grep -q "# added by HEPML environment installer" ~/.bashrc; then
+        bashrc_string=$'\n'
+        bashrc_string+="# added by HEPML environment installer"$'\n'
 
         if [[ "${HOST_LOCATION}" = "CERN" ]]; then
-            echo "# only setup PATH if on CentOS 7" >> ~/.bashrc
-            echo "if [[ \$(grep 'release 7' /etc/*-release) ]]; then" >> ~/.bashrc
-            echo "    export PATH=${INSTALL_DIR}/bin:\$PATH" >> ~/.bashrc
-            echo "    eval \"\$(pipenv --completion)\"" >> ~/.bashrc
+            bashrc_string+="# only setup PATH if on CentOS 7"$'\n'
+            bashrc_string+="if [[ \$(grep 'release 7' /etc/*-release) ]]; then"$'\n'
+            bashrc_string+="    export PATH=${INSTALL_DIR}/bin:\$PATH"$'\n'
+            bashrc_string+="    eval \"\$(pipenv --completion)\" # tab completion"$'\n'
             if [[ "${BASE_DIR}" != "${HOME}" ]]; then
                 # Have large (cache and venv) files exist in the install and project areas
                 mkdir -p "${BASE_DIR}/.cache/pip"
-                echo "    export PIP_CACHE_DIR=${BASE_DIR}/.cache/pip" >> ~/.bashrc
+                bashrc_string+="    export PIP_CACHE_DIR=${BASE_DIR}/.cache/pip"$'\n'
                 mkdir -p "${BASE_DIR}/.cache/pipenv"
-                echo "    export PIPENV_CACHE_DIR=${BASE_DIR}/.cache/pipenv" >> ~/.bashrc
-                echo "    export PIPENV_VENV_IN_PROJECT=true" >> ~/.bashrc
+                bashrc_string+="    export PIPENV_CACHE_DIR=${BASE_DIR}/.cache/pipenv"$'\n'
+                bashrc_string+="    export PIPENV_VENV_IN_PROJECT=true"$'\n'
             else
-                echo "    export PATH=${HOME}/.local/bin:\$PATH" >> ~/.bashrc
+                bashrc_string+="    export PATH=${HOME}/.local/bin:\$PATH"$'\n'
             fi
-            echo "fi" >> ~/.bashrc
+            bashrc_string+="fi"
         else
-            echo "export PATH=${INSTALL_DIR}/bin:\$PATH" >> ~/.bashrc
-            echo "export PATH=${HOME}/.local/bin:\$PATH" >> ~/.bashrc
-            echo "eval \"\$(pipenv --completion)\"" >> ~/.bashrc
+            bashrc_string+="export PATH=${INSTALL_DIR}/bin:\$PATH"$'\n'
+            bashrc_string+="export PATH=${HOME}/.local/bin:\$PATH"$'\n'
+            bashrc_string+="eval \"\$(pipenv --completion)\""
+        fi
+
+        if [[ "${DID_ACCEPT_DEFAULTS}" != true ]]; then
+            printf "\n\n### The following is going to be added to your ~/.bashrc\n"
+            printf "    (tab completion is optional)\n\n"
+            printf "~~~\n"
+            printf "${bashrc_string}\n"
+            printf "~~~\n"
+
+            while true; do
+                printf "\n"
+                read -p "    Do you give permission to write to your ~/.bashrc? [Y/n] " yn
+                case $yn in
+                    [Yy]* )
+                        echo "${bashrc_string}" >> ~/.bashrc
+                        break
+                        ;;
+                    [Nn]* )
+                        printf "\n    The above is necessary (with the exception of the tab completion).\n"
+                        printf "    Please append it yourself.\n"
+                        break
+                        ;;
+                    * )
+                        clear
+                        printf "\n    Please answer Yes or No.\n" ;;
+                esac
+            done
+        else
+            # defaults accepted
+            echo "${bashrc_string}" >> ~/.bashrc
         fi
     fi
 }
 
-### main
+function main() {
+    # Get command line options
+    DID_ACCEPT_DEFAULTS=false
+    IS_QUIET=false
+    for arg in "$@"; do
+        case "${arg}" in
+            -h|--help)
+                print_help_menu
+                exit 0
+                ;;
+            -y|--yes-to-all)
+                # accept defaults and skip prompt
+                DID_ACCEPT_DEFAULTS=true
+                ;;
+            -q|--quiet)
+                IS_QUIET=true
+                ;;
+            *)
+                ;;
+        esac
+    done
 
-HOST_LOCATION="$(check_host_location)"
+    HOST_LOCATION="$(check_host_location)"
 
-if [[ "${HOST_LOCATION}" = "CERN" ]]; then
-    if [[ ! $(grep 'release 7' /etc/*-release) ]]; then
-        echo "### A modern CentOS 7 architecture is expected."
-        echo "    Please use LXPLUS7 instead: ssh ${USER}@lxplus7.cern.ch -CX"
-        exit 1
-    else
-        # USER is on an LXPLUS7 node
-        CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
+    if [[ "${HOST_LOCATION}" = "CERN" ]]; then
+        if [[ ! $(grep 'release 7' /etc/*-release) ]]; then
+            echo "### A modern CentOS 7 architecture is expected."
+            echo "    Please use LXPLUS7 instead: ssh ${USER}@lxplus7.cern.ch -CX"
+            exit 1
+        else
+            # USER is on an LXPLUS7 node
+            CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
 
-        GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
-        export PATH="${GCC_PATH}/bin:${PATH}"
+            GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
+            export PATH="${GCC_PATH}/bin:${PATH}"
+        fi
     fi
-fi
 
-# Sets "${BASE_DIR}"
-set_base_directory
-INSTALL_DIR="${BASE_DIR}/Python-${PYTHON_VERSION_TAG}"
+    # Sets "${BASE_DIR}"
+    set_base_directory
+    INSTALL_DIR="${BASE_DIR}/Python-${PYTHON_VERSION_TAG}"
 
-NPROC="$(set_num_processors)"
+    NPROC="$(set_num_processors)"
 
-if [[ -d "${INSTALL_DIR}" ]]; then
-    rm -rf "${INSTALL_DIR}"
-fi
+    if [[ -d "${INSTALL_DIR}" ]]; then
+        rm -rf "${INSTALL_DIR}"
+    fi
 
-download_cpython "${PYTHON_VERSION_TAG}"
+    download_cpython "${PYTHON_VERSION_TAG}"
 
-cd "${INSTALL_DIR}"
+    cd "${INSTALL_DIR}"
 
-build_cpython "${INSTALL_DIR}" "${CXX_VERSION}"
+    build_cpython "${INSTALL_DIR}" "${CXX_VERSION}"
 
-# create symbolic links
-cd bin
-symlink_installed_to_defaults
+    # create symbolic links
+    cd bin
+    symlink_installed_to_defaults
 
-# Add the install locations to the USER's PATH for use below
-export "PATH=${INSTALL_DIR}/bin:$PATH"
-if [[ "${BASE_DIR}" != "${HOME}" ]]; then
-    mkdir -p "${BASE_DIR}/.cache/pip"
-    export PIP_CACHE_DIR="${BASE_DIR}/.cache/pip"
-else
-    export "PATH=${HOME}/.local/bin:$PATH"
-fi
+    # Add the install locations to the USER's PATH for use below
+    export "PATH=${INSTALL_DIR}/bin:$PATH"
+    if [[ "${BASE_DIR}" != "${HOME}" ]]; then
+        mkdir -p "${BASE_DIR}/.cache/pip"
+        export PIP_CACHE_DIR="${BASE_DIR}/.cache/pip"
+    else
+        export "PATH=${HOME}/.local/bin:$PATH"
+    fi
 
-# Update pip, setuptools, and wheel
-printf "\n### pip install --upgrade pip setuptools wheel\n"
-pip3 install --upgrade --quiet pip setuptools wheel
+    # Update pip, setuptools, and wheel
+    notify "\n### pip install --upgrade pip setuptools wheel\n"
+    pip3 install --upgrade --quiet pip setuptools wheel
 
-# Install pipenv
-printf "\n### pip install pipenv\n"
-pip3 install --quiet pipenv
+    # Install pipenv
+    notify "\n### pip install pipenv\n"
+    pip3 install --quiet pipenv
 
-append_to_bashrc
+    append_to_bashrc
 
-printf "\n### Finished installation!\n"
-printf "    source ~/.bashrc to start using the environment\n"
+    notify "\n### Finished installation!\n"
+    notify "    source ~/.bashrc to start using the environment\n"
+}
+
+main "$@" || exit 1
