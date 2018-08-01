@@ -1,4 +1,3 @@
-# test matrix
 language: python
 cache: pip
 python:
@@ -12,3 +11,32 @@ script:
 
 stages:
   - test
+
+matrix:
+  include:
+    - name: "Default"
+      install:
+        - pip install --upgrade --quiet pip
+        - pip install --quiet pipenv
+        - pipenv install --dev
+      script:
+        - pipenv run pytest
+    - name: "Installer"
+      addons:
+      apt:
+          packages:
+              - gcc
+              - g++
+              - zlibc
+              - zlib1g-dev
+              - libssl-dev
+              - wget
+              - make
+      install: pip install --upgrade --quiet pip
+      script:
+        - bash scripts/install.sh --help
+        - bash scripts/install.sh --defaults
+        - bash scripts/install.sh --yes-to-all
+        - source ~/.bashrc
+        - pipenv install --dev
+        - pipenv run pytest
