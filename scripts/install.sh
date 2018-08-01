@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# Much inspiration was taken from the Rust installer: https://sh.rustup.rs
-
 set -eu
 
 # PYTHON_VERSION_TAG=3.7.0
@@ -24,6 +22,7 @@ USAGE:
 
 FLAGS:
     -h, --help              Print help information
+    -d, --defaults          Print default install and configuration options
     -y, --yes-to-all        Accept defaults and disable confirmation prompt
     -q, --quiet             Print minimal information
 EOF
@@ -35,13 +34,43 @@ function notify() {
     fi
 }
 
-function check_host_location {
+function get_host_location {
     # Check if on LXPLUS
     if echo "$(hostname)" | grep -q "cern.ch"; then
-        echo "CERN"
+        HOST_LOCATION="CERN"
     else # or elsewhere
-        echo "$(hostname)"
+        HOST_LOCATION="$(hostname)"
     fi
+}
+
+function set_gloabals () {
+    get_host_location
+
+    if [[ "${HOST_LOCATION}" = "CERN" ]]; then
+        BASE_DIR="${HOME/user/work}"
+        CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
+    else
+        BASE_DIR="${HOME}"
+        CXX_VERSION="$(which gcc)"
+    fi
+    INSTALL_DIR="${BASE_DIR}/Python-${PYTHON_VERSION_TAG}"
+}
+
+function print_defaults {
+    set_gloabals
+
+    cat 1>&2 <<EOF
+Defaults for given architecture:
+
+CPython version: ${PYTHON_VERSION_TAG}
+Installation directory: ${BASE_DIR}
+gcc: ${CXX_VERSION}
+
+./configure options:
+  --prefix=${INSTALL_DIR}
+  --with-cxx-main=${CXX_VERSION}
+
+EOF
 }
 
 function set_base_directory {
@@ -168,9 +197,9 @@ function build_cpython () {
         # --enable-optimizations \
         # --with-cxx-main="${2}" \
         # CXX="${2}" &> cpython_configure.log
-    ./configure --prefix="${1}" \
-        --with-cxx-main="${2}" \
-        CXX="${2}" &> cpython_configure.log
+    ./configure --prefix="${INSTALL_DIR}" \
+        --with-cxx-main="${CXX_VERSION}" \
+        CXX="${CXX_VERSION}" &> cpython_configure.log
     notify "\n### make -j${NPROC}\n"
     make -j${NPROC} &> cpython_build.log
     notify "\n### make altinstall\n"
@@ -207,6 +236,8 @@ function append_to_bashrc {
             fi
             bashrc_string+="fi"
         else
+            bashrc_string+="export LC_ALL=C.UTF-8"$'\n'
+            bashrc_string+="export LANG=C.UTF-8"$'\n'
             bashrc_string+="export PATH=${INSTALL_DIR}/bin:\$PATH"$'\n'
             bashrc_string+="export PATH=${HOME}/.local/bin:\$PATH"$'\n'
             bashrc_string+="eval \"\$(pipenv --completion)\""
@@ -254,6 +285,10 @@ function main() {
                 print_help_menu
                 exit 0
                 ;;
+            -d|--defaults)
+                print_defaults
+                exit 0
+                ;;
             -y|--yes-to-all)
                 # accept defaults and skip prompt
                 DID_ACCEPT_DEFAULTS=true
@@ -266,25 +301,25 @@ function main() {
         esac
     done
 
-    HOST_LOCATION="$(check_host_location)"
+    get_host_location
 
     if [[ "${HOST_LOCATION}" = "CERN" ]]; then
         if [[ ! $(grep 'release 7' /etc/*-release) ]]; then
             echo "### A modern CentOS 7 architecture is expected."
             echo "    Please use LXPLUS7 instead: ssh ${USER}@lxplus7.cern.ch -CX"
             exit 1
-        else
-            # USER is on an LXPLUS7 node
-            CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
-
-            GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
-            export PATH="${GCC_PATH}/bin:${PATH}"
+            # else USER is on an LXPLUS7 node
         fi
     fi
 
     # Sets "${BASE_DIR}"
     set_base_directory
-    INSTALL_DIR="${BASE_DIR}/Python-${PYTHON_VERSION_TAG}"
+    set_gloabals
+
+    if [[ "${HOST_LOCATION}" = "CERN" ]]; then
+        GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
+        export PATH="${GCC_PATH}/bin:${PATH}"
+    fi
 
     NPROC="$(set_num_processors)"
 
