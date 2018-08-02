@@ -18,13 +18,20 @@ It should be machine agnostic, such that it can setup an identical environment
 on your laptop or on LXPLUS.
 
 USAGE:
-    installer [FLAGS]
+    installer [FLAGS] [OPTIONS]
 
 FLAGS:
     -h, --help              Print help information
     -d, --defaults          Print default install and configuration options
+                            If called last after OPTIONS then shows with OPTIONS applied
     -y, --yes-to-all        Accept defaults and disable confirmation prompt
     -q, --quiet             Print minimal information
+
+OPTIONS:
+        --gcc <gcc>                                Select a path to a gcc version
+        --install-dir <install-dir>                Select a path to for the install
+        --enable-optimizations                     Run ./configure with --enable-optimizations
+        --no-tab-complete                          Turn off addition of tab completion
 EOF
 }
 
@@ -43,21 +50,42 @@ function get_host_location {
     fi
 }
 
-function set_gloabals () {
+function set_globals () {
     get_host_location
 
     if [[ "${HOST_LOCATION}" = "CERN" ]]; then
-        BASE_DIR="${HOME/user/work}"
-        CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
+        if [[ -z ${BASE_DIR+x} ]]; then
+            BASE_DIR="${HOME/user/work}"
+        fi
+        if [[ -z ${CXX_VERSION+x} ]]; then
+            CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
+        fi
     else
-        BASE_DIR="${HOME}"
-        CXX_VERSION="$(which gcc)"
+        if [[ -z ${BASE_DIR+x} ]]; then
+            BASE_DIR="${HOME}"
+        fi
+        if [[ -z ${CXX_VERSION+x} ]]; then
+            CXX_VERSION="$(which gcc)"
+        fi
     fi
     INSTALL_DIR="${BASE_DIR}/Python-${PYTHON_VERSION_TAG}"
+
+    if [[ -z ${ADD_TAB_COMPLETE+x} ]]; then
+        ADD_TAB_COMPLETE=true
+    fi
+    if [[ -z ${ENABLE_OPTIMIZATIONS+x} ]]; then
+        ENABLE_OPTIMIZATIONS=false
+    fi
 }
 
 function print_defaults {
-    set_gloabals
+    set_globals
+
+    local configure_options_string="  --prefix=${INSTALL_DIR}"$'\n'
+    if [[ "${ENABLE_OPTIMIZATIONS}" == true ]]; then
+        configure_options_string+="  --enable-optimizations"$'\n'
+    fi
+    configure_options_string+="  --with-cxx-main=${CXX_VERSION}"
 
     cat 1>&2 <<EOF
 Defaults for given architecture:
@@ -67,8 +95,7 @@ Installation directory: ${BASE_DIR}
 gcc: ${CXX_VERSION}
 
 ./configure options:
-  --prefix=${INSTALL_DIR}
-  --with-cxx-main=${CXX_VERSION}
+${configure_options_string}
 
 EOF
 }
@@ -181,25 +208,19 @@ function set_num_processors {
     echo `expr "${NPROC}" - 1`
 }
 
-function build_cpython () {
-    # 1: the prefix to be passed to configure
-    # 2: the path to the version of gcc to be used
-
+function build_cpython {
     # https://docs.python.org/3/using/unix.html#building-python
     notify "\n### ./configure\n"
-    # Need to solve issue with unbound variable catch
-    # if [[ -z "${1}" ]]; then
-    #     ./configure --enable-optimizations
-    # else
-    #     ./configure --prefix="${1}" --enable-optimizations
-    # fi
-    # ./configure --prefix="${1}" \
-        # --enable-optimizations \
-        # --with-cxx-main="${2}" \
-        # CXX="${2}" &> cpython_configure.log
-    ./configure --prefix="${INSTALL_DIR}" \
-        --with-cxx-main="${CXX_VERSION}" \
-        CXX="${CXX_VERSION}" &> cpython_configure.log
+    if [[ "${ENABLE_OPTIMIZATIONS}" == true ]]; then
+        ./configure --prefix="${INSTALL_DIR}" \
+            --enable-optimizations \
+            --with-cxx-main="${CXX_VERSION}" \
+            CXX="${CXX_VERSION}" &> cpython_configure.log
+    else
+        ./configure --prefix="${INSTALL_DIR}" \
+            --with-cxx-main="${CXX_VERSION}" \
+            CXX="${CXX_VERSION}" &> cpython_configure.log
+    fi
     notify "\n### make -j${NPROC}\n"
     make -j${NPROC} &> cpython_build.log
     notify "\n### make altinstall\n"
@@ -216,14 +237,16 @@ function symlink_installed_to_defaults {
 
 function append_to_bashrc {
     if ! grep -q "# added by HEPML environment installer" ~/.bashrc; then
-        bashrc_string=$'\n'
+        local bashrc_string=$'\n'
         bashrc_string+="# added by HEPML environment installer"$'\n'
 
         if [[ "${HOST_LOCATION}" = "CERN" ]]; then
             bashrc_string+="# only setup PATH if on CentOS 7"$'\n'
             bashrc_string+="if [[ \$(grep 'release 7' /etc/*-release) ]]; then"$'\n'
             bashrc_string+="    export PATH=${INSTALL_DIR}/bin:\$PATH"$'\n'
-            bashrc_string+="    eval \"\$(pipenv --completion)\" # tab completion"$'\n'
+            if [[ "${ADD_TAB_COMPLETE}" == true ]]; then
+                bashrc_string+="    eval \"\$(pipenv --completion)\" # tab completion"$'\n'
+            fi
             if [[ "${BASE_DIR}" != "${HOME}" ]]; then
                 # Have large (cache and venv) files exist in the install and project areas
                 mkdir -p "${BASE_DIR}/.cache/pip"
@@ -240,7 +263,9 @@ function append_to_bashrc {
             bashrc_string+="export LANG=C.UTF-8"$'\n'
             bashrc_string+="export PATH=${INSTALL_DIR}/bin:\$PATH"$'\n'
             bashrc_string+="export PATH=${HOME}/.local/bin:\$PATH"$'\n'
-            bashrc_string+="eval \"\$(pipenv --completion)\""
+            if [[ "${ADD_TAB_COMPLETE}" == true ]]; then
+                bashrc_string+="eval \"\$(pipenv --completion)\""
+            fi
         fi
 
         if [[ "${DID_ACCEPT_DEFAULTS}" != true ]]; then
@@ -292,9 +317,30 @@ function main() {
             -y|--yes-to-all)
                 # accept defaults and skip prompt
                 DID_ACCEPT_DEFAULTS=true
+                shift
                 ;;
             -q|--quiet)
                 IS_QUIET=true
+                shift
+                ;;
+                # Additional options
+            --gcc)
+                CXX_VERSION="${2}"
+                shift
+                shift
+                ;;
+            --install-dir)
+                BASE_DIR="${2}"
+                shift
+                shift
+                ;;
+            --enable-optimizations)
+                ENABLE_OPTIMIZATIONS=true
+                shift
+                ;;
+            --no-tab-complete)
+                ADD_TAB_COMPLETE=false
+                shift
                 ;;
             *)
                 ;;
@@ -314,7 +360,7 @@ function main() {
 
     # Sets "${BASE_DIR}"
     set_base_directory
-    set_gloabals
+    set_globals
 
     if [[ "${HOST_LOCATION}" = "CERN" ]]; then
         GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
@@ -331,7 +377,7 @@ function main() {
 
     cd "${INSTALL_DIR}"
 
-    build_cpython "${INSTALL_DIR}" "${CXX_VERSION}"
+    build_cpython
 
     # create symbolic links
     cd bin
