@@ -122,8 +122,8 @@ function set_base_directory {
         fi
 
         if [[ "${DID_ACCEPT_DEFAULTS}" != true ]]; then
-            read -p "    Would you like Python3 to be installed in a DIFFERENT directory? [Y/n] " yn
-            case $yn in
+            read -p "    Would you like Python3 to be installed in a DIFFERENT directory? [Y/n/q] " ynq
+            case $ynq in
                 [Yy]* )
                     # Check if path is empty string
                     echo ""
@@ -151,8 +151,8 @@ function set_base_directory {
                             fs lq -human
                             cd - &> /dev/null
                             echo ""
-                            read -p "    Is this all okay? [Y/n] " yn
-                            case $yn in
+                            read -p "    Is this all okay? [Y/n/q] " ynq
+                            case $ynq in
                                 [Yy]* )
                                     # Being installation
                                     echo ""; break ;;
@@ -160,6 +160,9 @@ function set_base_directory {
                                     HAVE_ALREADY_CONFIRMED=true
                                     clear
                                     set_base_directory ;;
+                                [Qq]* )
+                                    printf "\n    Exiting installer\n"
+                                    exit 0 ;;
                                 * )
                                     clear
                                     printf "\n    Please answer Yes or No.\n" ;;
@@ -167,6 +170,9 @@ function set_base_directory {
                         done
                     fi; break ;;
                 [Nn]* ) break ;;
+                [Qq]* )
+                    printf "\n    Exiting installer\n"
+                    exit 0 ;;
                 * )
                     clear
                     printf "\n    Please answer Yes or No.\n" ;;
