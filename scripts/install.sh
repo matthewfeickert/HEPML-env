@@ -101,10 +101,12 @@ EOF
 }
 
 function set_base_directory {
-    # Select the home directory as the default base directory
-    BASE_DIR="${HOME}"
-    if [[ "${HOST_LOCATION}" = "CERN" ]]; then
-        BASE_DIR="${HOME/user/work}"
+    if [[ -z ${BASE_DIR+x} ]]; then
+        # Select the home directory as the default base directory
+        BASE_DIR="${HOME}"
+        if [[ "${HOST_LOCATION}" = "CERN" ]]; then
+            BASE_DIR="${HOME/user/work}"
+        fi
     fi
 
     while true; do
@@ -130,12 +132,12 @@ function set_base_directory {
                     read -r -e -p "    Enter the full file path of the directory: " BASE_DIR
                     if [[ -z "${BASE_DIR}" ]]; then
                         printf "\n    ERROR: The path entered is an empty string.\n\n"
-                        exit
+                        exit 1
                     fi
                     # Check if path does not exist
                     if [[ ! -e "${BASE_DIR}" ]]; then
                         printf "\n    ERROR: The path does not exist.\n\n"
-                        exit
+                        exit 1
                     fi
                     # The "/" will be added later
                     if [[ "${BASE_DIR: -1}" = "/" ]]; then
@@ -364,8 +366,9 @@ function main() {
         fi
     fi
 
-    # Sets "${BASE_DIR}"
-    set_base_directory
+    if [[ -z ${BASE_DIR+x} ]]; then
+        set_base_directory
+    fi
     set_globals
 
     if [[ "${HOST_LOCATION}" = "CERN" ]]; then
