@@ -277,8 +277,9 @@ function append_to_bashrc {
         fi
 
         if [[ "${DID_ACCEPT_DEFAULTS}" != true ]]; then
-            printf "\n\n### The following is going to be added to your ~/.bashrc\n"
-            printf "    (tab completion is optional)\n\n"
+            printf "\n\n### The following should be added to your ~/.bashrc\n"
+            printf "    (tab completion is optional)\n"
+            printf "\n    If you chose to not append to your ~/.bashrc a setup script will be generated\n"
             printf "~~~\n"
             printf "${bashrc_string}\n"
             printf "~~~\n"
@@ -289,11 +290,15 @@ function append_to_bashrc {
                 case $yn in
                     [Yy]* )
                         echo "${bashrc_string}" >> ~/.bashrc
+                        APPENDED_BASHRC=true
                         break
                         ;;
                     [Nn]* )
-                        printf "\n    The above is necessary (with the exception of the tab completion).\n"
-                        printf "    Please append it yourself.\n"
+                        echo "#!/usr/bin/env bash" > ${BASE_DIR}/setup_HEPML-env.sh
+                        echo "${bashrc_string}" >> ${BASE_DIR}/setup_HEPML-env.sh
+                        printf "\n    Generated ${BASE_DIR}/setup_HEPML-env.sh\n"
+                        printf "\n    Source setup_HEPML-env.sh as needed.\n"
+                        APPENDED_BASHRC=false
                         break
                         ;;
                     * )
@@ -412,7 +417,11 @@ function main() {
     append_to_bashrc
 
     notify "\n### Finished installation!\n"
-    notify "    source ~/.bashrc to start using the environment\n"
+    if [[ "${APPENDED_BASHRC}" == true ]]; then
+        notify "    source ~/.bashrc to start using the environment\n"
+    else
+        notify "    source ${BASE_DIR}/setup_HEPML-env.sh to start using the environment\n"
+    fi
 }
 
 main "$@" || exit 1
