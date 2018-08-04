@@ -41,6 +41,28 @@ function notify() {
     fi
 }
 
+function check_if_valid_path() {
+    if [[ ! -z "${2+x}" ]]; then
+        if [[ ! -e "${1}" ]]; then
+            printf "\n    "${2}" ERROR: "${1}" is not a valid path\n\n"
+            exit 1
+        fi
+    else
+        if [[ ! -e "${1}" ]]; then
+            printf "\n    ERROR: "${1}" is not a valid path\n\n"
+            exit 1
+        fi
+    fi
+}
+
+function check_for_cvmfs {
+    if [[ -d "/cvmfs/sft.cern.ch" ]]; then
+        HAS_CVMFS=true
+    else
+        HAS_CVMFS=false
+    fi
+}
+
 function get_host_location {
     # Check if on LXPLUS
     if echo "$(hostname)" | grep -q "cern.ch"; then
@@ -51,21 +73,27 @@ function get_host_location {
 }
 
 function set_globals () {
+    check_for_cvmfs
     get_host_location
+
+    # If CVMFS is available use it for greater portability
+    if [[ "${HAS_CVMFS}" == true ]]; then
+        if [[ -z ${CXX_VERSION+x} ]]; then
+            CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
+        fi
+    else
+        if [[ -z ${CXX_VERSION+x} ]]; then
+            CXX_VERSION="$(which gcc)"
+        fi
+    fi
 
     if [[ "${HOST_LOCATION}" = "CERN" ]]; then
         if [[ -z ${BASE_DIR+x} ]]; then
             BASE_DIR="${HOME/user/work}"
         fi
-        if [[ -z ${CXX_VERSION+x} ]]; then
-            CXX_VERSION="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7/bin/gcc"
-        fi
     else
         if [[ -z ${BASE_DIR+x} ]]; then
             BASE_DIR="${HOME}"
-        fi
-        if [[ -z ${CXX_VERSION+x} ]]; then
-            CXX_VERSION="$(which gcc)"
         fi
     fi
     INSTALL_DIR="${BASE_DIR}/Python-${PYTHON_VERSION_TAG}"
@@ -330,6 +358,7 @@ function main() {
             -y|--yes-to-all)
                 # accept defaults and skip prompt
                 DID_ACCEPT_DEFAULTS=true
+                APPENDED_BASHRC=true
                 shift
                 ;;
             -q|--quiet)
@@ -338,11 +367,13 @@ function main() {
                 ;;
                 # Additional options
             --gcc)
+                check_if_valid_path "${2}" --gcc
                 CXX_VERSION="${2}"
                 shift
                 shift
                 ;;
             --install-dir)
+                check_if_valid_path "${2}" --install-dir
                 BASE_DIR="${2}"
                 shift
                 shift
