@@ -30,6 +30,8 @@ FLAGS:
 OPTIONS:
         --gcc <gcc>                                Select a path to a gcc version
         --install-dir <install-dir>                Select a path to for the install
+        --overwrite                                Install Python3 possibly overwriting others
+                                                   c.f. https://docs.python.org/3/using/unix.html#building-python
         --enable-optimizations                     Run ./configure with --enable-optimizations
         --no-tab-complete                          Turn off addition of tab completion
 EOF
@@ -103,6 +105,9 @@ function set_globals () {
     fi
     if [[ -z ${ENABLE_OPTIMIZATIONS+x} ]]; then
         ENABLE_OPTIMIZATIONS=false
+    fi
+    if [[ -z ${ENABLE_OVERWRITE+x} ]]; then
+        ENABLE_OVERWRITE=false
     fi
 }
 
@@ -259,8 +264,13 @@ function build_cpython {
     fi
     notify "\n### make -j${NPROC}\n"
     make -j${NPROC} &> cpython_build.log
-    notify "\n### make altinstall\n"
-    make altinstall &> cpython_install.log
+    if [[ "${ENABLE_OVERWRITE}" == true ]]; then
+        notify "\n### make install\n"
+        make install &> cpython_install.log
+    else
+        notify "\n### make altinstall\n"
+        make altinstall &> cpython_install.log
+    fi
 }
 
 function symlink_installed_to_defaults {
@@ -382,6 +392,10 @@ function main() {
                 ENABLE_OPTIMIZATIONS=true
                 shift
                 ;;
+            --overwrite)
+                ENABLE_OVERWRITE=true
+                shift
+                ;;
             --no-tab-complete)
                 ADD_TAB_COMPLETE=false
                 shift
@@ -424,9 +438,11 @@ function main() {
 
     build_cpython
 
-    # create symbolic links
-    cd bin
-    symlink_installed_to_defaults
+    if [[ "${ENABLE_OVERWRITE}" == false ]]; then
+        # create symbolic links
+        cd bin
+        symlink_installed_to_defaults
+    fi
 
     # Add the install locations to the USER's PATH for use below
     export "PATH=${INSTALL_DIR}/bin:$PATH"
