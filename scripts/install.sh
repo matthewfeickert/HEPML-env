@@ -5,18 +5,8 @@ set -eu
 # PYTHON_VERSION_TAG=3.7.0
 PYTHON_VERSION_TAG=3.6.6 # Switch to 3.7 once Tensorflow is out for it
 
-function print_help_menu {
+function print_usage {
     cat 1>&2 <<EOF
-Installer for HEPML-env:
-https://github.com/matthewfeickert/HEPML-env
-
-Setting up a machine learning environment has gotten easier recently,
-but there are at times still problems that arise from time to time.
-HEPML-env allows for easily setting up a standard machine learning Python
-environment that should allow you to get to work with HEP data immediately.
-It should be machine agnostic, such that it can setup an identical environment
-on your laptop or on LXPLUS.
-
 USAGE:
     installer [FLAGS] [OPTIONS]
 
@@ -35,6 +25,22 @@ OPTIONS:
         --enable-optimizations                     Run ./configure with --enable-optimizations
         --no-tab-complete                          Turn off addition of tab completion
 EOF
+}
+
+function print_help_menu {
+    cat 1>&2 <<EOF
+Installer for HEPML-env:
+https://github.com/matthewfeickert/HEPML-env
+
+Setting up a machine learning environment has gotten easier recently,
+but there are at times still problems that arise from time to time.
+HEPML-env allows for easily setting up a standard machine learning Python
+environment that should allow you to get to work with HEP data immediately.
+It should be machine agnostic, such that it can setup an identical environment
+on your laptop or on LXPLUS.
+
+EOF
+    print_usage
 }
 
 function notify() {
@@ -401,6 +407,9 @@ function main() {
                 shift
                 ;;
             *)
+                printf "\n    Invalid option: ${1}\n\n"
+                print_usage
+                exit 1
                 ;;
         esac
     done
