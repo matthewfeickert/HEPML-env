@@ -44,7 +44,7 @@ EOF
 }
 
 function notify() {
-    if [[ "${IS_QUIET}" != true ]]; then
+    if [[ "${IS_QUIET}" == false ]]; then
         printf "${1}"
     fi
 }
@@ -149,7 +149,7 @@ function set_base_directory {
     fi
 
     while true; do
-        if [[ "${IS_QUIET}" != true ]]; then
+        if [[ "${IS_QUIET}" == false ]]; then
             if [[ "${HOST_LOCATION}" = "CERN" ]]; then
                 printf "\n### N.B.:\n"
                 printf "    In addition to Python3 the installed packages for the ML environment\n"
