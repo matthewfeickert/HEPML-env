@@ -187,11 +187,14 @@ function set_base_directory {
                     if [[ "${HAVE_ALREADY_CONFIRMED}" ]]; then
                         while true; do
                             printf "\n### Python3, pipenv, and all Python libraries will be installed under: ${BASE_DIR}\n\n"
-                            printf "    Current use of storage on partion housing ${BASE_DIR}\n\n"
-                            cd "${BASE_DIR}"
-                            fs lq -human
-                            cd - &> /dev/null
-                            echo ""
+                            if [[ -x "$(command -v fs)" ]]; then
+                                # Use AFS's fs_listquota tool if available
+                                printf "    Current use of storage on partion housing ${BASE_DIR}\n\n"
+                                cd "${BASE_DIR}"
+                                fs lq -human
+                                cd - &> /dev/null
+                                echo ""
+                            fi
                             read -p "    Is this all okay? [Y/n/q] " ynq
                             case $ynq in
                                 [Yy]* )
@@ -200,6 +203,7 @@ function set_base_directory {
                                 [Nn]* )
                                     HAVE_ALREADY_CONFIRMED=true
                                     clear
+                                    BASE_DIR="${HOME}"
                                     set_base_directory ;;
                                 [Qq]* )
                                     printf "\n    Exiting installer\n"
