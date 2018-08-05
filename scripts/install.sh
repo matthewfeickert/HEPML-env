@@ -13,8 +13,9 @@ USAGE:
 FLAGS:
     -h, --help              Print help information
     -d, --defaults          Print default install and configuration options
-                            If called last after OPTIONS then shows with OPTIONS applied
+                            If passed last after OPTIONS then shows with OPTIONS applied
     -y, --yes-to-all        Accept defaults and disable confirmation prompt
+                            If passed along with OPTIONS then OPTIONS will be applied as defaults
     -q, --quiet             Print minimal information
 
 OPTIONS:
@@ -23,6 +24,7 @@ OPTIONS:
         --overwrite                                Install Python3 possibly overwriting others
                                                    c.f. https://docs.python.org/3/using/unix.html#building-python
         --enable-optimizations                     Run ./configure with --enable-optimizations
+        --no-bashrc-append                         Write to a setup script instead of appending to ~/.bashrc
         --no-tab-complete                          Turn off addition of tab completion
 EOF
 }
@@ -106,6 +108,9 @@ function set_globals () {
     fi
     INSTALL_DIR="${BASE_DIR}/Python-${PYTHON_VERSION_TAG}"
 
+    if [[ -z ${APPENDED_BASHRC+x} ]]; then
+        APPENDED_BASHRC=true
+    fi
     if [[ -z ${ADD_TAB_COMPLETE+x} ]]; then
         ADD_TAB_COMPLETE=true
     fi
@@ -356,7 +361,12 @@ function append_to_bashrc {
             done
         else
             # defaults accepted
-            echo "${bashrc_string}" >> ~/.bashrc
+            if [[ "${APPENDED_BASHRC}" == true ]]; then
+                echo "${bashrc_string}" >> ~/.bashrc
+            else
+                echo "#!/usr/bin/env bash" > ${BASE_DIR}/setup_HEPML-env.sh
+                echo "${bashrc_string}" >> ${BASE_DIR}/setup_HEPML-env.sh
+            fi
         fi
     fi
 }
@@ -365,7 +375,8 @@ function main() {
     # Get command line options
     DID_ACCEPT_DEFAULTS=false
     IS_QUIET=false
-    for arg in "$@"; do
+    while [[ $# -gt 0 ]]; do
+        arg="${1}"
         case "${arg}" in
             -h|--help)
                 print_help_menu
@@ -378,7 +389,9 @@ function main() {
             -y|--yes-to-all)
                 # accept defaults and skip prompt
                 DID_ACCEPT_DEFAULTS=true
-                APPENDED_BASHRC=true
+                if [[ -z ${APPENDED_BASHRC+x} ]]; then
+                    APPENDED_BASHRC=true
+                fi
                 shift
                 ;;
             -q|--quiet)
@@ -404,6 +417,10 @@ function main() {
                 ;;
             --overwrite)
                 ENABLE_OVERWRITE=true
+                shift
+                ;;
+            --no-bashrc-append)
+                APPENDED_BASHRC=false
                 shift
                 ;;
             --no-tab-complete)
