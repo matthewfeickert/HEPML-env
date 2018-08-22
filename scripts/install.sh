@@ -65,11 +65,176 @@ function check_if_valid_path() {
     fi
 }
 
+function remove_from_array () {
+    local delete=($1)
+    local array=($2)
+
+    for target in "${delete[@]}"; do
+        for i in "${!array[@]}"; do
+            if [[ ${array[i]} = "${delete[0]}" ]]; then
+                unset 'array[i]'
+            fi
+        done
+    done
+    echo "${array[@]}"
+}
+
 function check_for_cvmfs {
     if [[ -d "/cvmfs/sft.cern.ch" ]]; then
         HAS_CVMFS=true
     else
         HAS_CVMFS=false
+    fi
+}
+
+function determine_OS {
+    # https://askubuntu.com/a/459425/781671
+    # Determine OS platform
+    local UNAME=$(uname | tr "[:upper:]" "[:lower:]")
+    # If Linux, try to determine specific distribution
+    if [ "${UNAME}" == "linux" ]; then
+        if [[ -f /etc/os-release ]]; then
+            local DISTRO="$(awk -F= '/^NAME/{print $2}' /etc/os-release)"
+            # Remove quotes
+            DISTRO=${DISTRO%\"}
+            DISTRO=${DISTRO#\"}
+        elif [ -f /etc/lsb-release -o -d /etc/lsb-release.d ]; then
+            # If available, use LSB to identify distribution
+            local DISTRO="$(lsb_release -i | cut -d: -f2 | sed s/'^\t'//)"
+            # Otherwise, use release info file
+        else
+            local DISTRO=$(ls -d /etc/[A-Za-z]*[_-][rv]e[lr]* | grep -v "lsb" | cut -d'/' -f3 | cut -d'-' -f1 | cut -d'_' -f1)
+        fi
+    fi
+    # For everything else (or if above failed), just use generic identifier
+    [ "${DISTRO}" == "" ] && local DISTRO="${UNAME}"
+
+    local supported_distros=("Ubuntu" "CentOS Linux" "ScientificCERNSLC")
+    if [[ ! "${supported_distros[@]}" =~ "${DISTRO}" ]]; then
+        printf "\n### ${DISTRO} is not a supproted distribution for the installer.\n"
+        printf "    Please install manually or file an Issue: https://github.com/matthewfeickert/HEPML-installer/blob/master/CONTRIBUTING.md\n"
+        printf "\n    Exiting installer\n"
+        exit 1
+    fi
+    echo "${DISTRO}"
+}
+
+function check_if_installed () {
+    if [[ "${SYSTEM_OS}" = "Ubuntu" ]]; then
+        dpkg -s $1 &> /dev/null
+    elif [[ "${SYSTEM_OS}" = "CentOS Linux" ]] || [[ "${SYSTEM_OS}" = "ScientificCERNSLC" ]]; then
+        yum list installed "$1" &>/dev/null
+    fi
+    # if not installed return package name
+    if [[ $? -ne 0 ]]; then
+        echo "${1}"
+    fi
+}
+
+function check_if_superuser {
+    sudo -v
+    if [[ $? -ne 0 ]]; then
+        printf "\n    sudo privlages not granted\n"
+        printf "\n    Exiting installer\n"
+        exit 1
+    fi
+}
+
+function install_with_package_manager () {
+    # https://unix.stackexchange.com/a/183648/275785
+    local missing_packages="$1"
+    if [[ "${SYSTEM_OS}" = "Ubuntu" ]]; then
+        echo ""
+        if [[ ! -z "${2+x}" ]]; then
+            if [[ "$2" = "sudo" ]]; then
+                printf "### sudo apt-get update\n\n"
+                sudo apt-get -y -qq update
+                echo ""
+                echo "### sudo apt-get install ${missing_packages[@]}"
+                sudo apt-get -y -qq install ${missing_packages[@]} &> apt_install.log
+            fi
+        else
+            printf "### apt-get update\n\n"
+            apt-get -y -qq update
+            echo ""
+            echo "### apt-get install ${missing_packages[@]}"
+            apt-get -y -qq install ${missing_packages[@]} &> apt_install.log
+        fi
+    elif [[ "${SYSTEM_OS}" = "CentOS Linux" ]] || [[ "${SYSTEM_OS}" = "ScientificCERNSLC" ]]; then
+        echo ""
+        if [[ ! -z "${2+x}" ]]; then
+            if [[ "$2" = "sudo" ]]; then
+                printf "### sudo yum update\n\n"
+                sudo yum -y -q update
+                echo ""
+                echo "### sudo yum install ${missing_packages[@]}"
+                sudo yum -y -q install ${missing_packages[@]} &> apt_install.log
+            fi
+        else
+            printf "### yum update\n\n"
+            yum -y -q update
+            echo ""
+            echo "### yum install ${missing_packages[@]}"
+            yum -y -q install ${missing_packages[@]} &> apt_install.log
+        fi
+    fi
+}
+
+function check_for_requirements {
+    if [[ "${SYSTEM_OS}" = "Ubuntu" ]]; then
+        local GNU_required_packages=(gcc g++ git zlibc zlib1g-dev libssl-dev wget make)
+    elif [[ "${SYSTEM_OS}" = "CentOS Linux" ]] || [[ "${SYSTEM_OS}" = "ScientificCERNSLC" ]]; then
+        local GNU_required_packages=(gcc gcc-c++ git zlib-devel openssl-devel wget make)
+    fi
+    local GNU_missing_packages=()
+
+    for package in "${GNU_required_packages[@]}"; do
+        GNU_missing_packages+=($(check_if_installed "${package}"))
+    done
+
+    # CVMFS supplies gcc, so if CVMFS present don't require it
+    if [[ ! -z "${GNU_missing_packages[@]+x}" ]] && [[ "${HAS_CVMFS}" == true ]]; then
+        if [[ "${GNU_missing_packages[@]}" =~ "gcc" ]]; then
+            GNU_missing_packages=($(remove_from_array "gcc" "$(echo ${GNU_missing_packages[@]})"))
+        fi
+    fi
+
+    if [[ "${#GNU_missing_packages[@]}" -ne 0 ]]; then
+        while true; do
+            printf "\n### The following required pacakges are missing.\n\n"
+            echo "    ${GNU_missing_packages[@]}"
+            echo ""
+            read -p "    Would you like them to be installed now? [Y/n/q] " ynq
+            case $ynq in
+                [Yy]* )
+                    echo ""
+                    read -p "    Do you require sudo powers on this machine to install software? [Y/n/q] " ynq
+                    case $ynq in
+                        [Yy]* )
+                            check_if_superuser
+                            install_with_package_manager "$(echo ${GNU_missing_packages[@]})" sudo
+                            echo "" ;;
+                        [Nn]* )
+                            install_with_package_manager "$(echo ${GNU_missing_packages[@]})"
+                            echo "" ;;
+                        [Qq]* )
+                            printf "\n    Exiting installer\n"
+                            exit 0 ;;
+                    esac
+                    break ;;
+                [Nn]* )
+                    printf "\n### Please run the followling install command:\n\n"
+                    echo "    apt-get install ${GNU_missing_packages[@]}"
+                    printf "\n    Exiting installer\n"
+                    exit 0 ;;
+                [Qq]* )
+                    printf "\n    Exiting installer\n"
+                    exit 0 ;;
+                * )
+                    clear
+                    printf "\n    Please answer Yes or No.\n" ;;
+            esac
+        done
     fi
 }
 
@@ -84,6 +249,7 @@ function get_host_location {
 
 function set_globals () {
     check_for_cvmfs
+    check_for_requirements
     get_host_location
 
     # If CVMFS is available use it for greater portability
@@ -449,6 +615,8 @@ function main() {
     if [[ -z ${BASE_DIR+x} ]]; then
         set_base_directory
     fi
+
+    SYSTEM_OS="$(determine_OS)"
     set_globals
 
     if [[ "${HOST_LOCATION}" = "CERN" ]]; then
