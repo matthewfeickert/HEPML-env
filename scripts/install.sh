@@ -51,6 +51,16 @@ function notify() {
     fi
 }
 
+function check_cmd_valid() {
+    # http://pubs.opengroup.org/onlinepubs/009696899/utilities/command.html
+    command -v "$1" > /dev/null 2>&1
+    if [[ $? -ne 0 ]]; then
+        printf "\n    ERROR: $1 is not being recongized as a valid command\n"
+        printf "\n    Exiting installer\n"
+        exit 1
+    fi
+}
+
 function check_if_valid_path() {
     if [[ ! -z "${2+x}" ]]; then
         if [[ ! -e "${1}" ]]; then
@@ -121,6 +131,7 @@ function determine_OS {
 
 function check_if_installed () {
     if [[ "${SYSTEM_OS}" = "Ubuntu" ]]; then
+        check_cmd_valid dpkg
         dpkg -s $1 &> /dev/null
     elif [[ "${SYSTEM_OS}" = "CentOS Linux" ]] || [[ "${SYSTEM_OS}" = "ScientificCERNSLC" ]]; then
         yum list installed "$1" &>/dev/null
@@ -144,6 +155,7 @@ function install_with_package_manager () {
     # https://unix.stackexchange.com/a/183648/275785
     local missing_packages="$1"
     if [[ "${SYSTEM_OS}" = "Ubuntu" ]]; then
+        check_cmd_valid apt-get
         echo ""
         if [[ ! -z "${2+x}" ]]; then
             if [[ "$2" = "sudo" ]]; then
@@ -159,6 +171,7 @@ function install_with_package_manager () {
             apt-get -y -qq install ${missing_packages[@]} &> apt_install.log
         fi
     elif [[ "${SYSTEM_OS}" = "CentOS Linux" ]] || [[ "${SYSTEM_OS}" = "ScientificCERNSLC" ]]; then
+        check_cmd_valid yum
         echo ""
         if [[ ! -z "${2+x}" ]]; then
             if [[ "$2" = "sudo" ]]; then
@@ -198,8 +211,12 @@ function check_for_requirements {
     fi
 
     if [[ "${#GNU_missing_packages[@]}" -ne 0 ]]; then
+        if [[ "${GNU_missing_packages[@]}" =~ "gcc" ]]; then
+            # CXX_VERSION will need to get reset by set_globals after check_for_requirements finishes
+            unset CXX_VERSION
+        fi
         while true; do
-            printf "\n### The following required pacakges are missing.\n\n"
+            printf "\n### The following required pacakges are missing:\n\n"
             echo "    ${GNU_missing_packages[@]}"
 
             if [[ "${DID_ACCEPT_DEFAULTS}" != true ]]; then
@@ -358,7 +375,7 @@ function set_base_directory {
                         exit 1
                     fi
                     # The "/" will be added later
-                    if [[ "${BASE_DIR: -1}" = "/" ]]; then
+                    if [[ ${#BASE_DIR} -gt 1 ]] && [[ "${BASE_DIR: -1}" = "/" ]]; then
                         BASE_DIR="${BASE_DIR:0:${#BASE_DIR} - 1}"
                     fi
                     # Confirm
@@ -419,10 +436,12 @@ function download_cpython () {
     notify "\n### Downloading CPython source as Python-${1}.tgz\n"
     cd ${BASE_DIR}
     if [[ ! -f "Python-${1}.tgz" ]]; then
+        check_cmd_valid wget
         wget "https://www.python.org/ftp/python/${1}/Python-${1}.tgz" &> /dev/null
     else
         echo "Python-${1}.tgz already exists. Using this version."
     fi
+    check_cmd_valid tar
     tar -xvzf "Python-${1}.tgz" > /dev/null
     rm "Python-${1}.tgz"
 }
@@ -441,6 +460,11 @@ function set_num_processors {
 function build_cpython {
     # https://docs.python.org/3/using/unix.html#building-python
     notify "\n### ./configure\n"
+    if [[ "${CXX_VERSION}" = "" ]]; then
+        printf "\n    ERROR: --with-cxx-main is found to be set to empty space\n"
+        printf "\n    Exiting installer\n"
+        exit 1
+    fi
     if [[ "${ENABLE_OPTIMIZATIONS}" == true ]]; then
         ./configure --prefix="${INSTALL_DIR}" \
             --enable-optimizations \
@@ -451,6 +475,7 @@ function build_cpython {
             --with-cxx-main="${CXX_VERSION}" \
             CXX="${CXX_VERSION}" &> cpython_configure.log
     fi
+    check_cmd_valid make
     notify "\n### make -j${NPROC}\n"
     make -j${NPROC} &> cpython_build.log
     if [[ "${ENABLE_OVERWRITE}" == true ]]; then
@@ -465,9 +490,21 @@ function build_cpython {
 function symlink_installed_to_defaults {
     # symbolic link the installed versions of Python3 to python3
     notify "\n### ln -s python${PYTHON_VERSION_TAG:0:3} python3\n"
-    ln -s "python${PYTHON_VERSION_TAG:0:3}" python3
+    if [[ -f "python${PYTHON_VERSION_TAG:0:3}" ]]; then
+        ln -s "python${PYTHON_VERSION_TAG:0:3}" python3
+    else
+        printf "\n    ERROR: python${PYTHON_VERSION_TAG:0:3} was not found (probably not built)\n"
+        printf "\n    Exiting installer\n"
+        exit 1
+    fi
     # pipenv will overwrite any symlink to pip3, but that's okay
-    ln -s "pip${PYTHON_VERSION_TAG:0:3}" pip3
+    if [[ -f "pip${PYTHON_VERSION_TAG:0:3}" ]]; then
+        ln -s "pip${PYTHON_VERSION_TAG:0:3}" pip3
+    else
+        printf "\n    ERROR: pip${PYTHON_VERSION_TAG:0:3} was not found (probably not built)\n"
+        printf "\n    Exiting installer\n"
+        exit 1
+    fi
 }
 
 function append_to_bashrc {
@@ -627,6 +664,8 @@ function main() {
     SYSTEM_OS="$(determine_OS)"
     set_globals
     check_for_requirements
+    # reset globals as requirements such as gcc may have been missing
+    set_globals
 
     if [[ "${HOST_LOCATION}" = "CERN" ]]; then
         GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
@@ -661,6 +700,7 @@ function main() {
     fi
 
     # Update pip, setuptools, and wheel
+    check_cmd_valid pip3
     notify "\n### pip install --upgrade pip setuptools wheel\n"
     pip3 install --upgrade --quiet pip setuptools wheel
 
