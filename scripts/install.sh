@@ -149,14 +149,12 @@ function install_with_package_manager () {
             if [[ "$2" = "sudo" ]]; then
                 printf "### sudo apt-get update\n\n"
                 sudo apt-get -y -qq update
-                echo ""
                 echo "### sudo apt-get install ${missing_packages[@]}"
                 sudo apt-get -y -qq install ${missing_packages[@]} &> apt_install.log
             fi
         else
             printf "### apt-get update\n\n"
             apt-get -y -qq update
-            echo ""
             echo "### apt-get install ${missing_packages[@]}"
             apt-get -y -qq install ${missing_packages[@]} &> apt_install.log
         fi
@@ -203,37 +201,43 @@ function check_for_requirements {
         while true; do
             printf "\n### The following required pacakges are missing.\n\n"
             echo "    ${GNU_missing_packages[@]}"
-            echo ""
-            read -p "    Would you like them to be installed now? [Y/n/q] " ynq
-            case $ynq in
-                [Yy]* )
-                    echo ""
-                    read -p "    Do you require sudo powers on this machine to install software? [Y/n/q] " ynq
-                    case $ynq in
-                        [Yy]* )
-                            check_if_superuser
-                            install_with_package_manager "$(echo ${GNU_missing_packages[@]})" sudo
-                            echo "" ;;
-                        [Nn]* )
-                            install_with_package_manager "$(echo ${GNU_missing_packages[@]})"
-                            echo "" ;;
-                        [Qq]* )
-                            printf "\n    Exiting installer\n"
-                            exit 0 ;;
-                    esac
-                    break ;;
-                [Nn]* )
-                    printf "\n### Please run the followling install command:\n\n"
-                    echo "    apt-get install ${GNU_missing_packages[@]}"
-                    printf "\n    Exiting installer\n"
-                    exit 0 ;;
-                [Qq]* )
-                    printf "\n    Exiting installer\n"
-                    exit 0 ;;
-                * )
-                    clear
-                    printf "\n    Please answer Yes or No.\n" ;;
-            esac
+
+            if [[ "${DID_ACCEPT_DEFAULTS}" != true ]]; then
+                echo ""
+                read -p "    Would you like them to be installed now? [Y/n/q] " ynq
+                case $ynq in
+                    [Yy]* )
+                        echo ""
+                        read -p "    Do you require sudo powers on this machine to install software? [Y/n/q] " ynq
+                        case $ynq in
+                            [Yy]* )
+                                check_if_superuser
+                                install_with_package_manager "$(echo ${GNU_missing_packages[@]})" sudo
+                                echo "" ;;
+                            [Nn]* )
+                                install_with_package_manager "$(echo ${GNU_missing_packages[@]})"
+                                echo "" ;;
+                            [Qq]* )
+                                printf "\n    Exiting installer\n"
+                                exit 0 ;;
+                        esac
+                        break ;;
+                    [Nn]* )
+                        printf "\n### Please run the followling install command:\n\n"
+                        echo "    apt-get install ${GNU_missing_packages[@]}"
+                        printf "\n    Exiting installer\n"
+                        exit 0 ;;
+                    [Qq]* )
+                        printf "\n    Exiting installer\n"
+                        exit 0 ;;
+                    * )
+                        clear
+                        printf "\n    Please answer Yes or No.\n" ;;
+                esac
+            else
+                install_with_package_manager "$(echo ${GNU_missing_packages[@]})"
+                break
+            fi
         done
     fi
 }
@@ -248,8 +252,10 @@ function get_host_location {
 }
 
 function set_globals () {
+    if [[ -z ${SYSTEM_OS+x} ]]; then
+        SYSTEM_OS="$(determine_OS)"
+    fi
     check_for_cvmfs
-    check_for_requirements
     get_host_location
 
     # If CVMFS is available use it for greater portability
@@ -300,8 +306,10 @@ function print_defaults {
     cat 1>&2 <<EOF
 Defaults for given architecture:
 
+Operating system: ${SYSTEM_OS}
 CPython version: ${PYTHON_VERSION_TAG}
 Installation directory: ${BASE_DIR}
+sudo powers required: No
 gcc: ${CXX_VERSION}
 
 ./configure options:
@@ -618,6 +626,7 @@ function main() {
 
     SYSTEM_OS="$(determine_OS)"
     set_globals
+    check_for_requirements
 
     if [[ "${HOST_LOCATION}" = "CERN" ]]; then
         GCC_PATH="/cvmfs/sft.cern.ch/lcg/external/gcc/6.2.0/x86_64-centos7"
