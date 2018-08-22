@@ -102,7 +102,7 @@ function determine_OS {
     # Determine OS platform
     local UNAME=$(uname | tr "[:upper:]" "[:lower:]")
     # If Linux, try to determine specific distribution
-    if [ "${UNAME}" == "linux" ]; then
+    if [ "${UNAME}" = "linux" ]; then
         if [[ -f /etc/os-release ]]; then
             local DISTRO="$(awk -F= '/^NAME/{print $2}' /etc/os-release)"
             # Remove quotes
@@ -115,11 +115,13 @@ function determine_OS {
         else
             local DISTRO=$(ls -d /etc/[A-Za-z]*[_-][rv]e[lr]* | grep -v "lsb" | cut -d'/' -f3 | cut -d'-' -f1 | cut -d'_' -f1)
         fi
+    elif [[ "${UNAME}" = "darwin" ]]; then
+        local DISTRO="${UNAME}"
     fi
     # For everything else (or if above failed), just use generic identifier
     [ "${DISTRO}" == "" ] && local DISTRO="${UNAME}"
 
-    local supported_distros=("Ubuntu" "CentOS Linux" "ScientificCERNSLC")
+    local supported_distros=("Ubuntu" "CentOS Linux" "ScientificCERNSLC" "darwin")
     if [[ ! "${supported_distros[@]}" =~ "${DISTRO}" ]]; then
         printf "\n### ${DISTRO} is not a supproted distribution for the installer.\n"
         printf "    Please install manually or file an Issue: https://github.com/matthewfeickert/HEPML-installer/blob/master/CONTRIBUTING.md\n"
@@ -135,6 +137,8 @@ function check_if_installed () {
         dpkg -s $1 &> /dev/null
     elif [[ "${SYSTEM_OS}" = "CentOS Linux" ]] || [[ "${SYSTEM_OS}" = "ScientificCERNSLC" ]]; then
         yum list installed "$1" &>/dev/null
+    elif [[ "${SYSTEM_OS}" = "darwin" ]]; then
+        brew ls --versions "$1" &>/dev/null
     fi
     # if not installed return package name
     if [[ $? -ne 0 ]]; then
@@ -188,6 +192,24 @@ function install_with_package_manager () {
             echo "### yum install ${missing_packages[@]}"
             yum -y -q install ${missing_packages[@]} &> apt_install.log
         fi
+    elif [[ "${SYSTEM_OS}" = "darwin" ]]; then
+        check_cmd_valid brew
+        echo ""
+        if [[ ! -z "${2+x}" ]]; then
+            if [[ "$2" = "sudo" ]]; then
+                printf "### sudo brew update\n\n"
+                sudo brew update
+                echo ""
+                echo "### sudo brew install ${missing_packages[@]}"
+                sudo brew --quiet install ${missing_packages[@]} &> apt_install.log
+            fi
+        else
+            printf "### brew update\n\n"
+            brew update
+            echo ""
+            echo "### brew install ${missing_packages[@]}"
+            brew --quiet install ${missing_packages[@]} &> apt_install.log
+        fi
     fi
 }
 
@@ -196,6 +218,8 @@ function check_for_requirements {
         local GNU_required_packages=(gcc g++ git zlibc zlib1g-dev libssl-dev wget make)
     elif [[ "${SYSTEM_OS}" = "CentOS Linux" ]] || [[ "${SYSTEM_OS}" = "ScientificCERNSLC" ]]; then
         local GNU_required_packages=(gcc gcc-c++ git zlib-devel openssl-devel wget make)
+    elif [[ "${SYSTEM_OS}" = "darwin" ]]; then
+        local GNU_required_packages=(gcc git openssl readline xz make)
     fi
     local GNU_missing_packages=()
 
@@ -442,23 +466,40 @@ function download_cpython () {
         echo "Python-${1}.tgz already exists. Using this version."
     fi
     check_cmd_valid tar
-    tar -xvzf "Python-${1}.tgz" > /dev/null
+    if [[ "${SYSTEM_OS}" = "darwin" ]]; then
+        tar -xzf "Python-${1}.tgz" > /dev/null
+    else
+        tar -xvzf "Python-${1}.tgz" > /dev/null
+    fi
     rm "Python-${1}.tgz"
 }
 
 function set_num_processors {
     # Set the number of processors used for build
     # to be 1 less than are available
-    if [[ -f "$(which nproc)" ]]; then
-        NPROC="$(nproc)"
+    if [[ "${SYSTEM_OS}" = "darwin" ]]; then
+        NPROC="$(sysctl -n hw.ncpu)"
     else
-        NPROC="$(grep -c '^processor' /proc/cpuinfo)"
+        if [[ -f "$(which nproc)" ]]; then
+            NPROC="$(nproc)"
+        else
+            NPROC="$(grep -c '^processor' /proc/cpuinfo)"
+        fi
     fi
-    echo `expr "${NPROC}" - 1`
+    if [[ "${NPROC}" -gt 1 ]]; then
+        echo `expr "${NPROC}" - 1`
+    else
+        echo "1"
+    fi
 }
 
 function build_cpython {
     # https://docs.python.org/3/using/unix.html#building-python
+    if [[ "${SYSTEM_OS}" = "darwin" ]]; then
+        # https://github.com/saghul/pythonz/issues/125#issue-210108545
+        export CPPFLAGS="-I$(brew --prefix openssl)/include"
+        export LDFLAGS="-L$(brew --prefix openssl)/lib"
+    fi
     notify "\n### ./configure\n"
     if [[ "${CXX_VERSION}" = "" ]]; then
         printf "\n    ERROR: --with-cxx-main is found to be set to empty space\n"
@@ -531,8 +572,13 @@ function append_to_bashrc {
             fi
             bashrc_string+="fi"
         else
-            bashrc_string+="export LC_ALL=C.UTF-8"$'\n'
-            bashrc_string+="export LANG=C.UTF-8"$'\n'
+            if [[ "${SYSTEM_OS}" = "Ubuntu" ]]; then
+                bashrc_string+="export LC_ALL=C.UTF-8"$'\n'
+                bashrc_string+="export LANG=C.UTF-8"$'\n'
+            else
+                bashrc_string+="export LC_ALL=en_US.UTF-8"$'\n'
+                bashrc_string+="export LANG=en_US.UTF-8"$'\n'
+            fi
             bashrc_string+="export PATH=${INSTALL_DIR}/bin:\$PATH"$'\n'
             bashrc_string+="export PATH=${HOME}/.local/bin:\$PATH"$'\n'
             if [[ "${ADD_TAB_COMPLETE}" == true ]]; then

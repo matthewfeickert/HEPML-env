@@ -1,13 +1,28 @@
+os: osx
+
 # test matrix
-language: python
-cache: pip
-python:
-  - '3.6'
-install:
-    - pip install --upgrade --quiet pip
-    - pip install --quiet pipenv
-    - pipenv install --dev
+language: generic
+# cache: pip
+# python:
+#   - '3.6'
+# install:
+#     - pip install --upgrade --quiet pip
+#     - pip install --quiet pipenv
+#     - pipenv install --dev
+before_install:
+    # - brew update > /dev/null
+    # - brew install gcc || true
+    # - brew link --overwrite gcc
+    # - brew install zlib zlib1g-dev libssl-dev make
+    - brew install make
+    # - brew upgrade openssl
 script:
+    # - pipenv run pytest
+    - bash scripts/install.sh -d
+    - bash scripts/install.sh -y
+    - source ~/.bashrc
+    - ls -l
+    - pipenv install --dev
     - pipenv run pytest
 
 stages:
