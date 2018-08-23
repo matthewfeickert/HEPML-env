@@ -531,8 +531,13 @@ function append_to_bashrc {
             fi
             bashrc_string+="fi"
         else
-            bashrc_string+="export LC_ALL=C.UTF-8"$'\n'
-            bashrc_string+="export LANG=C.UTF-8"$'\n'
+            if [[ "${SYSTEM_OS}" = "Ubuntu" ]]; then
+                bashrc_string+="export LC_ALL=C.UTF-8"$'\n'
+                bashrc_string+="export LANG=C.UTF-8"$'\n'
+            else
+                bashrc_string+="export LC_ALL=en_US.UTF-8"$'\n'
+                bashrc_string+="export LANG=en_US.UTF-8"$'\n'
+            fi
             bashrc_string+="export PATH=${INSTALL_DIR}/bin:\$PATH"$'\n'
             bashrc_string+="export PATH=${HOME}/.local/bin:\$PATH"$'\n'
             if [[ "${ADD_TAB_COMPLETE}" == true ]]; then
